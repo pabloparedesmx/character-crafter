@@ -4,11 +4,10 @@
 */
 import React, { useState, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateCharacterImage, generateSceneImage } from './services/geminiService';
+import { generateCharacterImage } from './services/geminiService';
 import CharacterPoseCard from './components/PolaroidCard';
 import { createCharacterSheet } from './lib/albumUtils';
 import Footer from './components/Footer';
-import { CharacterEditor } from './components/AnnotationEditor/CharacterEditor';
 
 const POSES = ['Front View', 'Side View', 'Back View', 'Action Pose', 'Happy Expression', 'Angry Expression'];
 const MAX_FILE_SIZE_MB = 4;
@@ -16,30 +15,30 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 const CARTOON_STYLES = {
     '3D Rendered Styles': [
-        { id: 'faceted-crystal', name: 'Faceted Crystal Style', description: 'Low-poly crystalline surfaces with sharp edges and reflective facets', type: '3D' },
-        { id: 'voxel-art', name: 'Voxel Art Style', description: 'Blocky 3D pixel art with cubic forms and retro gaming aesthetic', type: '3D' },
-        { id: 'clay-render', name: 'Clay Render Style', description: 'Soft matte surfaces resembling sculpted clay or plasticine', type: '3D' },
-        { id: 'marble-sculpture', name: 'Marble Sculpture Style', description: 'Polished stone-like surfaces with realistic material properties', type: '3D' },
-        { id: 'glass-art', name: 'Glass Art Style', description: 'Translucent surfaces with refraction and crystal-clear transparency', type: '3D' },
+        { id: 'faceted-crystal', name: 'Faceted Crystal Style', description: 'Low-poly crystalline surfaces with sharp edges and reflective facets' },
+        { id: 'voxel-art', name: 'Voxel Art Style', description: 'Blocky 3D pixel art with cubic forms and retro gaming aesthetic' },
+        { id: 'clay-render', name: 'Clay Render Style', description: 'Soft matte surfaces resembling sculpted clay or plasticine' },
+        { id: 'marble-sculpture', name: 'Marble Sculpture Style', description: 'Polished stone-like surfaces with realistic material properties' },
+        { id: 'glass-art', name: 'Glass Art Style', description: 'Translucent surfaces with refraction and crystal-clear transparency' },
     ],
     'Manga & Anime Inspired': [
-        { id: 'manga-style', name: 'Manga Illustration', description: 'Sharp lineart with dramatic expressions', type: '2D' },
-        { id: 'anime-style', name: 'Anime Character Design', description: 'Large eyes with detailed hair and shading', type: '2D' },
-        { id: 'chibi-kawaii', name: 'Chibi Style', description: 'Super cute with oversized heads and small bodies', type: '2D' },
-        { id: 'shounen-action', name: 'Action Anime Style', description: 'Dynamic poses with spiky hair and bold expressions', type: '2D' },
-        { id: 'soft-anime', name: 'Soft Anime Style', description: 'Gentle colors with whimsical fantasy elements', type: '2D' },
+        { id: 'manga-style', name: 'Manga Illustration', description: 'Sharp lineart with dramatic expressions' },
+        { id: 'anime-style', name: 'Anime Character Design', description: 'Large eyes with detailed hair and shading' },
+        { id: 'chibi-kawaii', name: 'Chibi Style', description: 'Super cute with oversized heads and small bodies' },
+        { id: 'shounen-action', name: 'Action Anime Style', description: 'Dynamic poses with spiky hair and bold expressions' },
+        { id: 'soft-anime', name: 'Soft Anime Style', description: 'Gentle colors with whimsical fantasy elements' },
     ],
     'Animation Techniques': [
-        { id: 'cutout-animation', name: 'Cutout Animation Style', description: 'Flat layered shapes with simple joints', type: '2D' },
-        { id: 'geometric-cartoon', name: 'Geometric Cartoon', description: 'Bold shapes with angular design elements', type: '2D' },
-        { id: 'organic-shapes', name: 'Organic Shape Animation', description: 'Flowing curves with natural movement feel', type: '2D' },
-        { id: 'vector-illustration', name: 'Vector Illustration', description: 'Clean digital art with smooth gradients', type: '2D' },
+        { id: 'cutout-animation', name: 'Cutout Animation Style', description: 'Flat layered shapes with simple joints' },
+        { id: 'geometric-cartoon', name: 'Geometric Cartoon', description: 'Bold shapes with angular design elements' },
+        { id: 'organic-shapes', name: 'Organic Shape Animation', description: 'Flowing curves with natural movement feel' },
+        { id: 'vector-illustration', name: 'Vector Illustration', description: 'Clean digital art with smooth gradients' },
     ],
     'Artistic Approaches': [
-        { id: 'gothic-cartoon', name: 'Gothic Cartoon Style', description: 'Dark themes with elongated proportions', type: '2D' },
-        { id: 'comic-strip', name: 'Comic Strip Style', description: 'Expressive linework with classic comic proportions', type: '2D' },
-        { id: 'watercolor-cartoon', name: 'Watercolor Cartoon', description: 'Soft painted textures with flowing colors', type: '2D' },
-        { id: 'sketch-animation', name: 'Sketch Animation Style', description: 'Rough, hand-drawn aesthetic with visible strokes', type: '2D' },
+        { id: 'gothic-cartoon', name: 'Gothic Cartoon Style', description: 'Dark themes with elongated proportions' },
+        { id: 'comic-strip', name: 'Comic Strip Style', description: 'Expressive linework with classic comic proportions' },
+        { id: 'watercolor-cartoon', name: 'Watercolor Cartoon', description: 'Soft painted textures with flowing colors' },
+        { id: 'sketch-animation', name: 'Sketch Animation Style', description: 'Rough, hand-drawn aesthetic with visible strokes' },
     ],
 };
 
@@ -50,7 +49,7 @@ interface GeneratedImage {
     error?: string;
 }
 
-type AppState = 'idle' | 'image-uploaded' | 'style-selection' | 'generating-base' | 'approval' | 'generating-sheet' | 'results-shown' | 'scene-generator' | 'generating-scene' | 'scene-results' | 'character-editor';
+type AppState = 'idle' | 'image-uploaded' | 'style-selection' | 'generating-base' | 'approval' | 'generating-sheet' | 'results-shown';
 
 const primaryButtonClasses = "font-permanent-marker text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)]";
 const secondaryButtonClasses = "font-permanent-marker text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
@@ -66,10 +65,6 @@ function App() {
     const [baseModelImage, setBaseModelImage] = useState<string | null>(null);
     const [styleExamples, setStyleExamples] = useState<Record<string, string>>({});
     const [lightboxImage, setLightboxImage] = useState<{src: string, title: string} | null>(null);
-    const [scenePrompt, setScenePrompt] = useState<string>('');
-    const [generatedScene, setGeneratedScene] = useState<{url: string, prompt: string} | null>(null);
-    const [isGeneratingScene, setIsGeneratingScene] = useState<boolean>(false);
-    const [editingImage, setEditingImage] = useState<string | null>(null);
 
     const getStylePrompt = (styleId: string): string => {
         console.log(`DEBUG - getStylePrompt called with styleId: "${styleId}"`);
@@ -113,30 +108,11 @@ function App() {
         // Get all style IDs and map them to local files
         const allStyleIds = Object.values(CARTOON_STYLES).flat().map(style => style.id);
         allStyleIds.forEach(styleId => {
-            // Check if it's a 3D style and use the appropriate folder
-            const style = Object.values(CARTOON_STYLES).flat().find(s => s.id === styleId);
-            const folder = style?.type === '3D' ? '3d-style-examples' : 'style-examples';
-            // Handle double .png extension for 3D styles
-            const extension = style?.type === '3D' ? '.png.png' : '.png';
-            examples[styleId] = `/${folder}/${styleId}${extension}`;
+            examples[styleId] = `/style-examples/${styleId}.png`;
         });
         
         setStyleExamples(examples);
     }, []);
-
-    // Filter styles based on selected type (2D or 3D)
-    const getFilteredStyles = () => {
-        if (!selectedStyle) return {};
-        
-        const filtered: Record<string, any[]> = {};
-        Object.entries(CARTOON_STYLES).forEach(([category, styles]) => {
-            const filteredStyles = styles.filter(style => style.type === selectedStyle);
-            if (filteredStyles.length > 0) {
-                filtered[category] = filteredStyles;
-            }
-        });
-        return filtered;
-    };
 
     // Open lightbox
     const openLightbox = (src: string, title: string) => {
@@ -313,89 +289,7 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
         setBaseModelImage(null);
         setSelectedStyle(null);
         setSelectedDetailedStyle(null);
-        setScenePrompt('');
-        setGeneratedScene(null);
         // Keep style examples cached for better UX
-    };
-
-    const handleOpenSceneGenerator = () => {
-        setAppState('scene-generator');
-    };
-
-    const handleGenerateScene = async () => {
-        if (!scenePrompt.trim() || !selectedDetailedStyle) return;
-
-        setIsGeneratingScene(true);
-        setAppState('generating-scene');
-
-        try {
-            // Get the best character images to use as reference
-            const characterImages = [baseModelImage!];
-            
-            // Add a few pose images for better character reference
-            const poseImages = Object.entries(generatedImages)
-                .filter(([, image]) => (image as GeneratedImage).status === 'done' && (image as GeneratedImage).url)
-                .slice(0, 2) // Use up to 2 pose images
-                .map(([, image]) => (image as GeneratedImage).url!);
-            
-            const allReferenceImages = [characterImages[0], ...poseImages];
-            const stylePrompt = getStylePrompt(selectedDetailedStyle);
-
-            const sceneUrl = await generateSceneImage(allReferenceImages, scenePrompt, stylePrompt);
-            
-            setGeneratedScene({ url: sceneUrl, prompt: scenePrompt });
-            setAppState('scene-results');
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            console.error('Failed to generate scene:', err);
-            alert(`Failed to generate scene: ${errorMessage}`);
-            setAppState('scene-generator');
-        } finally {
-            setIsGeneratingScene(false);
-        }
-    };
-
-    const handleDownloadScene = () => {
-        if (generatedScene?.url) {
-            const link = document.createElement('a');
-            link.href = generatedScene.url;
-            link.download = `character-scene-${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
-    const handleOpenCharacterEditor = (imageUrl: string) => {
-        setEditingImage(imageUrl);
-        setAppState('character-editor');
-    };
-
-    const handleCloseCharacterEditor = () => {
-        setEditingImage(null);
-        // Return to the appropriate state based on where we came from
-        if (appState === 'character-editor') {
-            // If we were editing from approval, go back to approval
-            if (baseModelImage) {
-                setAppState('approval');
-            } else {
-                setAppState('results-shown');
-            }
-        }
-    };
-
-    const handleCharacterEdited = (editedImageUrl: string) => {
-        // Update the base model image with the edited version
-        setBaseModelImage(editedImageUrl);
-        
-        // Update the generated images with the edited version
-        setGeneratedImages(prev => ({
-            ...prev,
-            [POSES[0]]: { status: 'done', url: editedImageUrl }
-        }));
-        
-        // Don't close the editor automatically - let user decide when to close
-        // The editor will show the updated character and user can continue editing or close manually
     };
 
     const handleDownloadIndividualImage = (pose: string) => {
@@ -424,9 +318,9 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
         setIsDownloading(true);
         try {
             const imageData = Object.entries(generatedImages)
-                .filter(([, image]) => (image as GeneratedImage).status === 'done' && (image as GeneratedImage).url)
+                .filter(([, image]) => image.status === 'done' && image.url)
                 .reduce((acc, [pose, image]) => {
-                    acc[pose] = (image as GeneratedImage).url!;
+                    acc[pose] = image!.url!;
                     return acc;
                 }, {} as Record<string, string>);
 
@@ -435,14 +329,14 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                 return;
             }
 
-            await createCharacterSheet(generatedImages, (sheetDataUrl) => {
-                const link = document.createElement('a');
-                link.href = sheetDataUrl;
-                link.download = 'character-crafter-sheet.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
+            const sheetDataUrl = await createCharacterSheet(imageData);
+
+            const link = document.createElement('a');
+            link.href = sheetDataUrl;
+            link.download = 'character-crafter-sheet.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
         } catch (error) {
             console.error("Failed to create or download character sheet:", error);
@@ -452,7 +346,7 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
         }
     };
     
-    const isGenerationComplete = appState === 'results-shown' && Object.values(generatedImages).every(img => (img as GeneratedImage).status === 'done' || (img as GeneratedImage).status === 'error');
+    const isGenerationComplete = appState === 'results-shown' && Object.values(generatedImages).every(img => img.status === 'done' || img.status === 'error');
 
     return (
         <main className="bg-black text-neutral-200 min-h-screen w-full flex flex-col items-center justify-center p-4 pb-32 overflow-x-hidden relative">
@@ -504,19 +398,13 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                                 <h3 className="font-permanent-marker text-2xl text-neutral-200">Choose Basic Style</h3>
                                 <div className="flex gap-4">
                                     <button
-                                        onClick={() => {
-                                            setSelectedStyle('2D');
-                                            setSelectedDetailedStyle(null);
-                                        }}
+                                        onClick={() => setSelectedStyle('2D')}
                                         className={`${selectedStyle === '2D' ? primaryButtonClasses : secondaryButtonClasses}`}
                                     >
                                         2D Style
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setSelectedStyle('3D');
-                                            setSelectedDetailedStyle(null);
-                                        }}
+                                        onClick={() => setSelectedStyle('3D')}
                                         className={`${selectedStyle === '3D' ? primaryButtonClasses : secondaryButtonClasses}`}
                                     >
                                         3D Style
@@ -527,8 +415,8 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                             {/* Detailed Art Style Selection */}
                             {selectedStyle && (
                                 <div className="w-full space-y-6">
-                                    <h3 className="font-permanent-marker text-2xl text-neutral-200 text-center">Choose {selectedStyle} Art Style</h3>
-                                    {Object.entries(getFilteredStyles()).map(([category, styles]) => (
+                                    <h3 className="font-permanent-marker text-2xl text-neutral-200 text-center">Choose Art Style</h3>
+                                    {Object.entries(CARTOON_STYLES).map(([category, styles]) => (
                                         <div key={category} className="space-y-3">
                                             <h4 className="font-permanent-marker text-lg text-yellow-400">{category}</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -620,12 +508,6 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                             <img src={baseModelImage} alt="Generated Character" className="max-w-md rounded-lg shadow-lg" />
                             <div className="flex gap-4">
                                 <button
-                                    onClick={() => handleOpenCharacterEditor(baseModelImage)}
-                                    className={primaryButtonClasses}
-                                >
-                                    Edit Character
-                                </button>
-                                <button
                                     onClick={handleApproveAndGenerateSheet}
                                     className={primaryButtonClasses}
                                 >
@@ -681,12 +563,6 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                                         {isDownloading ? 'Preparing Download...' : 'Download Full Sheet'}
                                     </button>
                                     <button
-                                        onClick={handleOpenSceneGenerator}
-                                        className={primaryButtonClasses}
-                                    >
-                                        Scene Generator
-                                    </button>
-                                    <button
                                         onClick={handleReset}
                                         className={secondaryButtonClasses}
                                     >
@@ -696,134 +572,8 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                             )}
                         </motion.div>
                     )}
-
-                    {appState === 'scene-generator' && (
-                        <motion.div
-                            key="scene-generator"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.5 }}
-                            className="flex flex-col items-center gap-6 w-full max-w-4xl"
-                        >
-                            <h3 className="font-permanent-marker text-3xl text-neutral-200">Scene Generator</h3>
-                            <p className="text-neutral-300 text-center max-w-2xl">
-                                Create amazing scenes featuring your character! Describe what you want to see, and we'll generate a scene that matches your character's style.
-                            </p>
-                            
-                            <div className="w-full max-w-2xl">
-                                <label htmlFor="scene-prompt" className="block text-neutral-300 mb-2 font-permanent-marker text-lg">
-                                    Describe your scene:
-                                </label>
-                                <textarea
-                                    id="scene-prompt"
-                                    value={scenePrompt}
-                                    onChange={(e) => setScenePrompt(e.target.value)}
-                                    placeholder="Example: Make this character ride a dragon in a fantasy world"
-                                    className="w-full h-32 p-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-lg text-neutral-200 placeholder-neutral-500 resize-none focus:border-yellow-400 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={handleGenerateScene}
-                                    disabled={!scenePrompt.trim()}
-                                    className={`${primaryButtonClasses} ${!scenePrompt.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                    Generate Scene
-                                </button>
-                                <button
-                                    onClick={() => setAppState('results-shown')}
-                                    className={secondaryButtonClasses}
-                                >
-                                    Back to Character Sheet
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {appState === 'generating-scene' && (
-                        <motion.div
-                            key="generating-scene"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.5 }}
-                            className="flex flex-col items-center gap-6"
-                        >
-                            <h3 className="font-permanent-marker text-2xl text-neutral-200">Generating Your Scene...</h3>
-                            <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-neutral-300 text-center">
-                                Creating an amazing scene with your character in the style: {selectedDetailedStyle}
-                            </p>
-                        </motion.div>
-                    )}
-
-                    {appState === 'scene-results' && generatedScene && (
-                        <motion.div
-                            key="scene-results"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.5 }}
-                            className="flex flex-col items-center gap-6 w-full max-w-4xl"
-                        >
-                            <h3 className="font-permanent-marker text-3xl text-neutral-200">Your Generated Scene</h3>
-                            <p className="text-neutral-300 text-center italic">"{generatedScene.prompt}"</p>
-                            
-                            <div className="relative group">
-                                <img 
-                                    src={generatedScene.url} 
-                                    alt="Generated Scene" 
-                                    className="max-w-full rounded-lg shadow-2xl cursor-pointer transform transition-transform duration-300 group-hover:scale-105"
-                                    onClick={() => setLightboxImage({ src: generatedScene.url, title: `Scene: ${generatedScene.prompt}` })}
-                                />
-                            </div>
-
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => baseModelImage && handleOpenCharacterEditor(baseModelImage)}
-                                    className={primaryButtonClasses}
-                                >
-                                    Edit Character
-                                </button>
-                                <button
-                                    onClick={handleDownloadScene}
-                                    className={primaryButtonClasses}
-                                >
-                                    Download Scene
-                                </button>
-                                <button
-                                    onClick={() => setAppState('scene-generator')}
-                                    className={secondaryButtonClasses}
-                                >
-                                    Generate Another Scene
-                                </button>
-                                <button
-                                    onClick={() => setAppState('results-shown')}
-                                    className={secondaryButtonClasses}
-                                >
-                                    Back to Character Sheet
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
                 </AnimatePresence>
             </div>
-
-            {/* Character Editor Modal */}
-            {appState === 'character-editor' && editingImage && (
-                <CharacterEditor
-                    characterImage={editingImage}
-                    onImageGenerated={handleCharacterEdited}
-                    onError={(error) => {
-                        console.error('Character editing error:', error);
-                        alert(`Character editing error: ${error}`);
-                    }}
-                    onClose={handleCloseCharacterEditor}
-                    stylePrompt={selectedDetailedStyle ? getStylePrompt(selectedDetailedStyle) : 'cartoon illustration style'}
-                />
-            )}
 
             {/* Lightbox Modal */}
             {lightboxImage && (
