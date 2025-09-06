@@ -70,6 +70,7 @@ function App() {
     const [generatedScene, setGeneratedScene] = useState<{url: string, prompt: string} | null>(null);
     const [isGeneratingScene, setIsGeneratingScene] = useState<boolean>(false);
     const [editingImage, setEditingImage] = useState<string | null>(null);
+    const [editingContext, setEditingContext] = useState<'character' | 'scene'>('character');
 
     const getStylePrompt = (styleId: string): string => {
         console.log(`DEBUG - getStylePrompt called with styleId: "${styleId}"`);
@@ -366,17 +367,22 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
         }
     };
 
-    const handleOpenCharacterEditor = (imageUrl: string) => {
+    const handleOpenCharacterEditor = (imageUrl: string, context: 'character' | 'scene' = 'character') => {
         setEditingImage(imageUrl);
+        setEditingContext(context);
         setAppState('character-editor');
     };
 
     const handleCloseCharacterEditor = () => {
         setEditingImage(null);
+        setEditingContext('character');
         // Return to the appropriate state based on where we came from
         if (appState === 'character-editor') {
+            // If we were editing a scene, go back to scene results
+            if (editingContext === 'scene') {
+                setAppState('scene-results');
             // If we were editing from approval, go back to approval
-            if (baseModelImage) {
+            } else if (baseModelImage) {
                 setAppState('approval');
             } else {
                 setAppState('results-shown');
@@ -385,17 +391,22 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
     };
 
     const handleCharacterEdited = (editedImageUrl: string) => {
-        // Update the base model image with the edited version
-        setBaseModelImage(editedImageUrl);
-        
-        // Update the generated images with the edited version
-        setGeneratedImages(prev => ({
-            ...prev,
-            [POSES[0]]: { status: 'done', url: editedImageUrl }
-        }));
+        if (editingContext === 'scene') {
+            // Update the generated scene with the edited version
+            setGeneratedScene(prev => prev ? { ...prev, url: editedImageUrl } : null);
+        } else {
+            // Update the base model image with the edited version
+            setBaseModelImage(editedImageUrl);
+            
+            // Update the generated images with the edited version
+            setGeneratedImages(prev => ({
+                ...prev,
+                [POSES[0]]: { status: 'done', url: editedImageUrl }
+            }));
+        }
         
         // Don't close the editor automatically - let user decide when to close
-        // The editor will show the updated character and user can continue editing or close manually
+        // The editor will show the updated character/scene and user can continue editing or close manually
     };
 
     const handleDownloadIndividualImage = (pose: string) => {
@@ -782,10 +793,10 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
 
                             <div className="flex gap-4">
                                 <button
-                                    onClick={() => baseModelImage && handleOpenCharacterEditor(baseModelImage)}
+                                    onClick={() => generatedScene && handleOpenCharacterEditor(generatedScene.url, 'scene')}
                                     className={primaryButtonClasses}
                                 >
-                                    Edit Character
+                                    Edit Scene
                                 </button>
                                 <button
                                     onClick={handleDownloadScene}
@@ -822,6 +833,7 @@ FINAL REMINDER: This must be the SAME CHARACTER as shown in the reference images
                     }}
                     onClose={handleCloseCharacterEditor}
                     stylePrompt={selectedDetailedStyle ? getStylePrompt(selectedDetailedStyle) : 'cartoon illustration style'}
+                    context={editingContext}
                 />
             )}
 

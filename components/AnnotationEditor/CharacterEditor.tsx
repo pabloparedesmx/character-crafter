@@ -17,6 +17,7 @@ interface CharacterEditorProps {
   onError?: (error: string) => void;
   onClose?: () => void;
   stylePrompt?: string;
+  context?: 'character' | 'scene';
 }
 
 const defaultConfig: AnnotationConfig = {
@@ -45,6 +46,7 @@ export const CharacterEditor: React.FC<CharacterEditorProps> = ({
   onError,
   onClose,
   stylePrompt = "cartoon illustration style",
+  context = 'character',
 }) => {
   const config = defaultConfig;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -363,7 +365,7 @@ Style specifications: ${stylePrompt}`;
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-2xl font-permanent-marker text-gray-900">
-            Character Editor
+            {context === 'scene' ? 'Scene Editor' : 'Character Editor'}
           </h2>
           <button
             onClick={onClose}
@@ -380,17 +382,7 @@ Style specifications: ${stylePrompt}`;
             {/* Tools */}
             <div className="space-y-2">
               <h3 className="font-permanent-marker text-lg text-gray-900">Tools</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setActiveTool(activeTool === "draw" ? null : "draw")}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    activeTool === "draw"
-                      ? "border-yellow-400 bg-yellow-400/10 text-yellow-600"
-                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                  }`}
-                >
-                  <Palette size={20} />
-                </button>
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   onClick={() => setActiveTool(activeTool === "mask" ? null : "mask")}
                   className={`p-3 rounded-lg border-2 transition-all ${
@@ -399,27 +391,10 @@ Style specifications: ${stylePrompt}`;
                       : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
                   }`}
                 >
-                  <Lasso size={20} />
-                </button>
-                <button
-                  onClick={() => setActiveTool(activeTool === "text" ? null : "text")}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    activeTool === "text"
-                      ? "border-yellow-400 bg-yellow-400/10 text-yellow-600"
-                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                  }`}
-                >
-                  <Type size={20} />
-                </button>
-                <button
-                  onClick={() => setActiveTool(activeTool === "image" ? null : "image")}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    activeTool === "image"
-                      ? "border-yellow-400 bg-yellow-400/10 text-yellow-600"
-                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                  }`}
-                >
-                  <ImageIcon size={20} />
+                  <div className="flex items-center gap-2">
+                    <Lasso size={20} />
+                    <span className="text-sm font-medium">Draw to Edit</span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -486,10 +461,10 @@ Style specifications: ${stylePrompt}`;
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 flex items-center justify-center p-8 min-h-0 bg-gradient-to-br from-slate-50 to-slate-100">
-            <div className="w-full h-full flex items-center justify-center max-w-6xl mx-auto">
+          <div className="flex-1 p-4 overflow-auto bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className="w-full flex justify-center">
               {image ? (
-                <div className="relative bg-white rounded-xl shadow-xl border border-slate-200 p-4 max-w-full max-h-full">
+                <div className="relative bg-white rounded-xl shadow-xl border border-slate-200 p-4">
                   <AnnotationCanvas
                     dimensions={dimensions}
                     annotations={annotations}
@@ -508,7 +483,7 @@ Style specifications: ${stylePrompt}`;
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
-                    className="max-w-full max-h-full object-contain rounded-lg"
+                    className="rounded-lg"
                   />
                 </div>
               ) : (
